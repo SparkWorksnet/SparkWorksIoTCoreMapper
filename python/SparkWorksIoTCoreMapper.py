@@ -26,17 +26,20 @@ class SparkWorksIoTCoreMapper(object):
 
     def __on_connect(self, client, userdata, flags, rc):
         self.connected = True
-        self.logger.info("{0}".format(rc))
+        self.logger.info(f"{rc}")
         self.mqtts_client.loop_start()
 
     def __on_message(self, client, userdata, msg):
-        self.logger.info("{0}, {1} - {2}".format(userdata, msg.topic, msg.payload))
+        self.logger.info(f"{userdata}, {msg.topic} - {msg.payload}")
 
     def __on_log(self, client, userdata, level, buf):
-        self.logger.info("{0}, {1}, {2}, {3}".format(client, userdata, level, buf))
+        self.logger.info(f"{client}, {userdata}, {level}, {buf}")
 
     def __on_publish(self, client, userdata, mid):
-        self.logger.info("on_publish, mid {}".format(mid))
+        self.logger.info(f"on_publish, mid {mid}")
+
+    def __on_disconnect(self, client, userdata, rc):
+        self.logger.info(f"on_disconnect, mid {rc}")
 
     def bootstrap_mqtt(self):
         self.mqtts_client = paho.Client(client_id=self.device_id)
@@ -51,6 +54,7 @@ class SparkWorksIoTCoreMapper(object):
         self.mqtts_client.on_connect = self.__on_connect
         self.mqtts_client.on_message = self.__on_message
         self.mqtts_client.on_publish = self.__on_publish
+        self.mqtts_client._on_disconnect = self.__on_disconnect
 
         self.mqtts_client.connect("a2ukebs5veg22d-ats.iot.eu-west-1.amazonaws.com",
                                   port=8883,
@@ -63,7 +67,7 @@ class SparkWorksIoTCoreMapper(object):
         topic = f"{self.deployment}/{self.device_id}/{self.device_id}"
         print(f"[{topic}] {data}")
         self.mqtts_client.publish(topic=topic, payload=data, qos=0)
-        time.sleep(1)
+        self.mqtts_client.loop(timeout=1000)
 
     def send_payload_for_other(self, other_device, data):
         self.send_string_payload_for_other(other_device=other_device, data=json.dumps(data))
@@ -72,4 +76,4 @@ class SparkWorksIoTCoreMapper(object):
         topic = f"{self.deployment}/{self.device_id}/{other_device}"
         self.logger.info(f"[{topic}] {data}")
         self.mqtts_client.publish(topic=topic, payload=data, qos=0)
-        time.sleep(1)
+        self.mqtts_client.loop(timeout=1000)
